@@ -39,6 +39,16 @@
             <svg class="w-4 h-4 stroke-current fill-none stroke-2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
             <span>Limpiador Temp</span>
           </button>
+
+          <!-- Botón Hardware y Batería -->
+          <button 
+            @click="currentTab = 'hardware'"
+            class="w-full text-left px-4 py-2.5 rounded-xl text-xs font-semibold transition-all flex items-center space-x-3 cursor-pointer"
+            :class="currentTab === 'hardware' ? (isDark ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' : 'bg-cyan-50 text-cyan-700 border border-cyan-200 shadow-sm') : (isDark ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-600 hover:bg-gray-50')"
+          >
+            <svg class="w-4 h-4 stroke-current fill-none stroke-2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+            <span>Hardware y Batería</span>
+          </button>
         </nav>
       </div>
 
@@ -166,6 +176,15 @@
         </div>
       </div>
 
+      <!-- PESTAÑA 4: HARDWARE Y BATERÍA -->
+      <div v-if="currentTab === 'hardware'" class="space-y-6">
+        <div class="mb-4">
+          <h2 class="text-lg font-bold">Diagnóstico de Hardware y Red</h2>
+          <p class="text-xs text-gray-400">Monitoreo del estado físico de la batería y flujo de datos de red en tiempo real.</p>
+        </div>
+        <BatteryNetCard :battery="advancedHardware.battery" :network="advancedHardware.network" :isDark="isDark" />
+      </div>
+
     </main>
   </div>
 </template>
@@ -176,6 +195,7 @@ import CpuCard from './components/CpuCard.vue'
 import RamCard from './components/RamCard.vue'
 import StorageCard from './components/StorageCard.vue'
 import Recommendations from './components/Recommendations.vue'
+import BatteryNetCard from './components/BatteryNetCard.vue'
 
 const isDark = ref(true)
 const currentTab = ref('dashboard')
@@ -196,18 +216,41 @@ const metrics = ref({
   processesList: []
 })
 
+const advancedHardware = ref({
+  battery: { percent: 100, isCharging: false, health: 100 },
+  network: { rx_sec: '0.00', tx_sec: '0.00' }
+})
+
 let timer = null
+let running = false
+
+const scheduleNext = () => {
+  timer = setTimeout(fetchMetrics, 2000)
+}
 
 const fetchMetrics = async () => {
-  if (window.api && window.api.getSystemStatus) {
-    const status = await window.api.getSystemStatus()
-    metrics.value = status
+  if (running) return
+  running = true
+  try {
+    if (window.api && window.api.getSystemStatus) {
+      const status = await window.api.getSystemStatus()
+      metrics.value = status
+    }
+    if (window.api && window.api.getAdvancedHardware) {
+      const adv = await window.api.getAdvancedHardware()
+      advancedHardware.value = adv
+    }
+  } finally {
+    running = false
+    scheduleNext()
   }
 }
 
 const killProcess = async (pid) => {
   if (window.api && window.api.killProcess) {
     await window.api.killProcess(pid)
+    clearTimeout(timer)
+    running = false
     fetchMetrics()
   }
 }
@@ -220,15 +263,16 @@ const runCleaner = async () => {
     cleanResult.value = res
   }
   cleaning.value = false
+  clearTimeout(timer)
+  running = false
   fetchMetrics()
 }
 
 onMounted(() => {
   fetchMetrics()
-  timer = setInterval(fetchMetrics, 2000)
 })
 
 onUnmounted(() => {
-  if (timer) clearInterval(timer)
+  if (timer) clearTimeout(timer)
 })
 </script>

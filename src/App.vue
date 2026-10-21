@@ -1,50 +1,172 @@
 <template>
-  <div class="min-h-screen bg-gray-950 text-white p-6 font-sans">
-    <!-- Header principal -->
-    <header class="mb-6 flex justify-between items-center border-b border-gray-800 pb-4">
+  <div :class="isDark ? 'dark bg-gray-950 text-white' : 'bg-gray-100 text-gray-900'" class="min-h-screen flex font-sans transition-colors duration-300">
+    
+    <!-- Sidebar -->
+    <aside class="w-64 border-r p-5 flex flex-col justify-between" :class="isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'">
       <div>
-        <h1 class="text-2xl font-black tracking-wide text-cyan-400">SENTIByte</h1>
-        <p class="text-xs text-gray-400">System & Hardware Monitor for Windows</p>
-      </div>
-      <div class="flex items-center space-x-2 bg-gray-900 px-3 py-1.5 rounded-full border border-gray-800">
-        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
-        <span class="text-xs font-medium text-gray-300">Monitoreo activo</span>
-      </div>
-    </header>
+        <div class="mb-8">
+          <h1 class="text-xl font-black tracking-wide" :class="isDark ? 'text-cyan-400' : 'text-cyan-600'">SENTIByte</h1>
+          <p class="text-[10px]" :class="isDark ? 'text-gray-400' : 'text-gray-500'">{{ metrics.manufacturer }} {{ metrics.model }}</p>
+        </div>
 
-    <!-- Score de Salud del Sistema -->
-    <section class="bbg-linear-to-r from-gray-900 via-gray-850 to-gray-900 p-6 rounded-2xl border border-gray-800 mb-6 flex items-center justify-between">
-      <div>
-        <h2 class="text-xl font-bold text-white mb-1">
-          {{ metrics.healthScore >= 80 ? 'Tu PC está saludable' : 'Tu PC requiere atención' }}
-        </h2>
-        <p class="text-xs text-gray-400">
-          {{ metrics.healthScore >= 80 ? 'Todos los sistemas están dentro de parámetros normales' : 'Se detectó alto consumo en algunos componentes' }}
-        </p>
+        <nav class="space-y-2">
+          <!-- Botón Estado General -->
+          <button 
+            @click="currentTab = 'dashboard'"
+            class="w-full text-left px-4 py-2.5 rounded-xl text-xs font-semibold transition-all flex items-center space-x-3 cursor-pointer"
+            :class="currentTab === 'dashboard' ? (isDark ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' : 'bg-cyan-50 text-cyan-700 border border-cyan-200 shadow-sm') : (isDark ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-600 hover:bg-gray-50')"
+          >
+            <svg class="w-4 h-4 stroke-current fill-none stroke-2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+            <span>Estado General</span>
+          </button>
+
+          <!-- Botón Procesos Activos -->
+          <button 
+            @click="currentTab = 'processes'"
+            class="w-full text-left px-4 py-2.5 rounded-xl text-xs font-semibold transition-all flex items-center space-x-3 cursor-pointer"
+            :class="currentTab === 'processes' ? (isDark ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' : 'bg-cyan-50 text-cyan-700 border border-cyan-200 shadow-sm') : (isDark ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-600 hover:bg-gray-50')"
+          >
+            <svg class="w-4 h-4 stroke-current fill-none stroke-2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            <span>Procesos Activos</span>
+          </button>
+
+          <!-- Botón Limpiador Temp -->
+          <button 
+            @click="currentTab = 'optimizer'"
+            class="w-full text-left px-4 py-2.5 rounded-xl text-xs font-semibold transition-all flex items-center space-x-3 cursor-pointer"
+            :class="currentTab === 'optimizer' ? (isDark ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' : 'bg-cyan-50 text-cyan-700 border border-cyan-200 shadow-sm') : (isDark ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-600 hover:bg-gray-50')"
+          >
+            <svg class="w-4 h-4 stroke-current fill-none stroke-2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            <span>Limpiador Temp</span>
+          </button>
+        </nav>
       </div>
 
-      <!-- Anillo de puntuación -->
-      <div class="flex items-center space-x-3">
-        <div class="relative flex items-center justify-center w-20 h-20 rounded-full border-4"
-          :class="metrics.healthScore >= 80 ? 'border-emerald-400' : 'border-amber-400'">
-          <span class="text-2xl font-black" :class="metrics.healthScore >= 80 ? 'text-emerald-400' : 'text-amber-400'">
-            {{ metrics.healthScore }}
-          </span>
+      <!-- Footer Sidebar -->
+      <div class="space-y-3 pt-4 border-t" :class="isDark ? 'border-gray-800' : 'border-gray-200'">
+        <button 
+          @click="isDark = !isDark" 
+          class="w-full p-2.5 rounded-xl border transition-all flex items-center justify-center space-x-2 text-xs font-semibold cursor-pointer"
+          :class="isDark ? 'bg-gray-950 border-gray-700 text-amber-400 hover:bg-gray-800' : 'bg-gray-50 border-gray-300 text-indigo-600 hover:bg-gray-100 shadow-sm'"
+        >
+          <!-- Ícono Sol -->
+          <svg v-if="isDark" class="w-4 h-4 stroke-current fill-none stroke-2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z"/></svg>
+          <!-- Ícono Luna -->
+          <svg v-else class="w-4 h-4 stroke-current fill-none stroke-2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z"/></svg>
+          <span>{{ isDark ? 'Modo Claro' : 'Modo Oscuro' }}</span>
+        </button>
+
+        <div class="flex items-center justify-center space-x-2 px-3 py-1.5 rounded-full border text-center" :class="isDark ? 'bg-gray-950 border-gray-800' : 'bg-gray-50 border-gray-200 shadow-sm'">
+          <span class="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <span class="text-[11px] font-medium" :class="isDark ? 'text-gray-300' : 'text-gray-600'">Monitoreo Activo</span>
         </div>
       </div>
-    </section>
+    </aside>
 
-    <!-- Grid de métricas -->
-    <main class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-      <CpuCard :usage="metrics.cpuUsage" :temp="metrics.cpuTemp" />
-      <RamCard :percent="metrics.ramPercent" :used="metrics.ramUsed" :total="metrics.ramTotal" />
+    <!-- Main Content -->
+    <main class="flex-1 p-8 overflow-y-auto">
+      
+      <!-- PESTAÑA 1: DASHBOARD -->
+      <div v-if="currentTab === 'dashboard'" class="space-y-6">
+        <section class="p-6 rounded-2xl border flex items-center justify-between shadow-sm transition-colors" :class="isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'">
+          <div>
+            <h2 class="text-xl font-bold mb-1" :class="isDark ? 'text-white' : 'text-gray-900'">
+              {{ metrics.healthScore >= 80 ? 'Tu PC está saludable' : 'Tu PC requiere atención' }}
+            </h2>
+            <p class="text-xs" :class="isDark ? 'text-gray-400' : 'text-gray-500'">
+              {{ metrics.healthScore >= 80 ? 'Todos los sistemas están dentro de parámetros normales' : 'Se detectó alto consumo o espacio limitado en algunos componentes' }}
+            </p>
+          </div>
+          <div class="flex items-center space-x-3">
+            <div class="relative flex items-center justify-center w-20 h-20 rounded-full border-4 font-black text-2xl"
+              :class="metrics.healthScore >= 80 ? (isDark ? 'border-emerald-400 text-emerald-400' : 'border-emerald-500 text-emerald-600') : 'border-amber-400 text-amber-500'">
+              {{ metrics.healthScore }}
+            </div>
+          </div>
+        </section>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <CpuCard :usage="metrics.cpuUsage" :temp="metrics.cpuTemp" :isDark="isDark" />
+          <RamCard :percent="metrics.ramPercent" :used="metrics.ramUsed" :total="metrics.ramTotal" :isDark="isDark" />
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <StorageCard :disks="metrics.disks" :isDark="isDark" />
+          <Recommendations :cpuUsage="metrics.cpuUsage" :ramPercent="metrics.ramPercent" :disks="metrics.disks" :topProcess="metrics.topProcess" :isDark="isDark" />
+        </div>
+      </div>
+
+      <!-- PESTAÑA 2: PROCESOS ACTIVOS -->
+      <div v-if="currentTab === 'processes'" class="space-y-6">
+        <div class="p-6 rounded-2xl border shadow-sm" :class="isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'">
+          <div class="flex justify-between items-center mb-4">
+            <div>
+              <h2 class="text-lg font-bold">Administrador de Procesos</h2>
+              <p class="text-xs text-gray-400">Cierra aplicaciones colgadas para liberar CPU y memoria RAM inmediatamente.</p>
+            </div>
+          </div>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="border-b" :class="isDark ? 'border-gray-800 text-gray-400' : 'border-gray-200 text-gray-500'">
+                <tr>
+                  <th class="py-3 px-4">PID</th>
+                  <th class="py-3 px-4">Nombre del Proceso</th>
+                  <th class="py-3 px-4">Uso CPU</th>
+                  <th class="py-3 px-4 text-right">Acción</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y" :class="isDark ? 'divide-gray-800/50' : 'divide-gray-100'">
+                <tr v-for="proc in metrics.processesList" :key="proc.pid" class="hover:bg-gray-50/50 transition-colors">
+                  <td class="py-3 px-4 font-mono text-gray-500">{{ proc.pid }}</td>
+                  <td class="py-3 px-4 font-mono font-semibold" :class="isDark ? 'text-cyan-400' : 'text-cyan-600'">{{ proc.name }}</td>
+                  <td class="py-3 px-4 font-bold">{{ proc.cpu }}%</td>
+                  <td class="py-3 px-4 text-right">
+                    <button 
+                      @click="killProcess(proc.pid)"
+                      class="px-3 py-1 rounded-lg bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500 hover:text-white transition-all text-[11px] font-medium cursor-pointer"
+                    >
+                      Finalizar Tarea
+                    </button>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
+      <!-- PESTAÑA 3: OPTIMIZADOR / LIMPIADOR TEMP -->
+      <div v-if="currentTab === 'optimizer'" class="space-y-6">
+        <div class="p-6 rounded-2xl border shadow-sm text-center py-12" :class="isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'">
+          <div class="max-w-md mx-auto space-y-4">
+            <div class="w-14 h-14 mx-auto rounded-2xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
+              <svg class="w-7 h-7 stroke-current fill-none stroke-2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"/></svg>
+            </div>
+            <h2 class="text-xl font-bold">Limpiador de Archivos Temporales</h2>
+            <p class="text-xs text-gray-400">Elimina el caché y los archivos temporales (%TEMP%) acumulados por aplicaciones para liberar espacio en el Disco C:.</p>
+
+            <button 
+              @click="runCleaner"
+              :disabled="cleaning"
+              class="px-6 py-3 rounded-xl bg-cyan-500 text-gray-950 font-bold text-xs hover:bg-cyan-400 transition-all cursor-pointer shadow-lg shadow-cyan-500/20 disabled:opacity-50"
+            >
+              {{ cleaning ? 'Limpiando sistema...' : 'Escanear y Limpiar Basura' }}
+            </button>
+
+            <!-- Mensaje de Resultado -->
+            <div v-if="cleanResult" class="mt-4 p-4 rounded-xl border text-xs font-medium flex items-center space-x-2 justify-center" :class="cleanResult.success ? (isDark ? 'bg-emerald-950/30 border-emerald-800/40 text-emerald-400' : 'bg-emerald-50 border-emerald-200 text-emerald-700') : 'bg-red-950/30 border-red-800/40 text-red-400'">
+              <svg v-if="cleanResult.success" class="w-4 h-4 stroke-current fill-none stroke-2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/></svg>
+              <span v-if="cleanResult.success">
+                Limpieza completada. Se liberaron <strong>{{ cleanResult.freedMB }} MB</strong> eliminando {{ cleanResult.deletedFilesCount }} archivos temporales.
+              </span>
+              <span v-else>{{ cleanResult.message }}</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
     </main>
-
-    <!-- Discos y Recomendaciones -->
-    <section class="grid grid-cols-1 md:grid-cols-2 gap-6">
-      <StorageCard :disks="metrics.disks" />
-      <Recommendations :cpuUsage="metrics.cpuUsage" :ramPercent="metrics.ramPercent" :disks="metrics.disks" />
-    </section>
   </div>
 </template>
 
@@ -55,14 +177,23 @@ import RamCard from './components/RamCard.vue'
 import StorageCard from './components/StorageCard.vue'
 import Recommendations from './components/Recommendations.vue'
 
+const isDark = ref(true)
+const currentTab = ref('dashboard')
+const cleaning = ref(false)
+const cleanResult = ref(null)
+
 const metrics = ref({
   healthScore: 100,
+  manufacturer: '',
+  model: '',
   cpuUsage: 0,
   cpuTemp: '--',
   ramPercent: 0,
   ramUsed: 0,
   ramTotal: 0,
-  disks: []
+  disks: [],
+  topProcess: null,
+  processesList: []
 })
 
 let timer = null
@@ -72,6 +203,24 @@ const fetchMetrics = async () => {
     const status = await window.api.getSystemStatus()
     metrics.value = status
   }
+}
+
+const killProcess = async (pid) => {
+  if (window.api && window.api.killProcess) {
+    await window.api.killProcess(pid)
+    fetchMetrics()
+  }
+}
+
+const runCleaner = async () => {
+  cleaning.value = true
+  cleanResult.value = null
+  if (window.api && window.api.cleanTempFiles) {
+    const res = await window.api.cleanTempFiles()
+    cleanResult.value = res
+  }
+  cleaning.value = false
+  fetchMetrics()
 }
 
 onMounted(() => {

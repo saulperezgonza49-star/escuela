@@ -14,25 +14,61 @@
     </div>
     
     <div class="flex items-baseline space-x-2">
-      <span class="text-4xl font-extrabold" :class="isDark ? 'text-cyan-400' : 'text-cyan-600'">{{ usage }}</span>
+      <span class="text-4xl font-extrabold" :class="isDark ? 'text-cyan-400' : 'text-cyan-600'">{{ displayValue }}</span>
       <span class="text-xl font-semibold" :class="isDark ? 'text-cyan-400/80' : 'text-cyan-600/80'">%</span>
     </div>
 
-    <!-- Barra de progreso -->
+    <!-- Barra de progreso — ancho sincronizado con el número -->
     <div class="w-full rounded-full h-2.5 mt-4 overflow-hidden" :class="isDark ? 'bg-gray-800' : 'bg-gray-200'">
       <div 
-        class="h-2.5 rounded-full transition-all duration-500 ease-out"
+        class="h-2.5 rounded-full"
         :class="isDark ? 'bg-cyan-400' : 'bg-cyan-600'"
-        :style="{ width: usage + '%' }"
+        :style="{ width: displayValue + '%' }"
       ></div>
     </div>
   </div>
 </template>
 
 <script setup>
-defineProps({
+import { ref, watch } from 'vue'
+
+const props = defineProps({
   usage: { type: [Number, String], default: 0 },
-  temp: { type: [Number, String], default: '--' },
+  temp:  { type: [Number, String], default: '--' },
   isDark: { type: Boolean, default: true }
+})
+
+// Valor animado: número y barra siempre van juntos
+const displayValue = ref(Number(props.usage) || 0)
+let rafId = null
+
+function animateTo(target) {
+  if (rafId) cancelAnimationFrame(rafId)
+
+  const start     = displayValue.value
+  const end       = Number(target) || 0
+  const duration  = 600  // ms — un poco más que el intervalo de fetch (2000ms) para suavidad
+  const startTime = performance.now()
+
+  function step(now) {
+    const elapsed  = now - startTime
+    const progress = Math.min(elapsed / duration, 1)
+    // ease-out: desacelera al llegar al valor real
+    const eased    = 1 - Math.pow(1 - progress, 3)
+    displayValue.value = Math.round(start + (end - start) * eased)
+
+    if (progress < 1) {
+      rafId = requestAnimationFrame(step)
+    } else {
+      displayValue.value = end
+      rafId = null
+    }
+  }
+
+  rafId = requestAnimationFrame(step)
+}
+
+watch(() => props.usage, (newVal) => {
+  animateTo(newVal)
 })
 </script>

@@ -49,6 +49,16 @@
             <svg class="w-4 h-4 stroke-current fill-none stroke-2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
             <span>Hardware y Batería</span>
           </button>
+
+          <!-- Botón Herramientas Pro -->
+          <button 
+            @click="currentTab = 'tools'; fetchAdvancedTools()"
+            class="w-full text-left px-4 py-2.5 rounded-xl text-xs font-semibold transition-all flex items-center space-x-3 cursor-pointer"
+            :class="currentTab === 'tools' ? (isDark ? 'bg-cyan-500/10 text-cyan-400 border border-cyan-500/20' : 'bg-cyan-50 text-cyan-700 border border-cyan-200 shadow-sm') : (isDark ? 'text-gray-400 hover:bg-gray-800' : 'text-gray-600 hover:bg-gray-50')"
+          >
+            <svg class="w-4 h-4 stroke-current fill-none stroke-2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+            <span>Herramientas Pro</span>
+          </button>
         </nav>
       </div>
 
@@ -78,6 +88,30 @@
       
       <!-- PESTAÑA 1: DASHBOARD -->
       <div v-if="currentTab === 'dashboard'" class="space-y-6">
+        
+        <!-- Acciones Rápidas Globales -->
+        <div class="flex items-center justify-end space-x-3 mb-2">
+          <button 
+            @click="handleFlushRam"
+            :disabled="flushing"
+            class="px-4 py-2 rounded-xl border text-xs font-semibold transition-all flex items-center space-x-2 cursor-pointer shadow-sm disabled:opacity-50"
+            :class="isDark ? 'bg-gray-900 border-gray-800 text-indigo-400 hover:bg-gray-800' : 'bg-white border-gray-200 text-indigo-600 hover:bg-gray-50'"
+          >
+            <svg class="w-4 h-4 stroke-current fill-none stroke-2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+            <span>{{ flushing ? 'Optimizando RAM...' : 'Liberar RAM' }}</span>
+          </button>
+
+          <button 
+            @click="handleExportReport"
+            :disabled="exporting"
+            class="px-4 py-2 rounded-xl border text-xs font-semibold transition-all flex items-center space-x-2 cursor-pointer shadow-sm disabled:opacity-50"
+            :class="isDark ? 'bg-gray-900 border-gray-800 text-cyan-400 hover:bg-gray-800' : 'bg-white border-gray-200 text-cyan-600 hover:bg-gray-50'"
+          >
+            <svg class="w-4 h-4 stroke-current fill-none stroke-2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/></svg>
+            <span>{{ exporting ? 'Generando...' : 'Exportar Reporte' }}</span>
+          </button>
+        </div>
+
         <section class="p-6 rounded-2xl border flex items-center justify-between shadow-sm transition-colors" :class="isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'">
           <div>
             <h2 class="text-xl font-bold mb-1" :class="isDark ? 'text-white' : 'text-gray-900'">
@@ -185,6 +219,57 @@
         <BatteryNetCard :battery="advancedHardware.battery" :network="advancedHardware.network" :isDark="isDark" />
       </div>
 
+      <!-- PESTAÑA 5: HERRAMIENTAS PRO (STARTUP & HARDWARE DETALLADO) -->
+      <div v-if="currentTab === 'tools'" class="space-y-6">
+        <div class="mb-4">
+          <h2 class="text-lg font-bold">Herramientas y Diagnóstico Avanzado</h2>
+          <p class="text-xs text-gray-400">Control de aplicaciones de arranque y especificaciones profundas de GPU y Placa Base.</p>
+        </div>
+
+        <!-- Tarjeta de GPU y Placa Base -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div class="p-5 rounded-2xl border shadow-sm" :class="isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'">
+            <h3 class="font-medium text-sm mb-3" :class="isDark ? 'text-gray-400' : 'text-gray-500'">Tarjeta Gráfica (GPU)</h3>
+            <p class="text-base font-bold" :class="isDark ? 'text-cyan-400' : 'text-cyan-600'">{{ hardwareSpecs.gpu }}</p>
+            <p class="text-xs text-gray-400 mt-1">VRAM: {{ hardwareSpecs.vram }}</p>
+          </div>
+
+          <div class="p-5 rounded-2xl border shadow-sm" :class="isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'">
+            <h3 class="font-medium text-sm mb-3" :class="isDark ? 'text-gray-400' : 'text-gray-500'">Placa Base y BIOS</h3>
+            <p class="text-base font-bold" :class="isDark ? 'text-emerald-400' : 'text-emerald-600'">{{ hardwareSpecs.motherboard }}</p>
+            <p class="text-xs text-gray-400 mt-1">Versión BIOS: {{ hardwareSpecs.biosVersion }}</p>
+          </div>
+        </div>
+
+        <!-- Gestor de Aplicaciones de Inicio -->
+        <div class="p-6 rounded-2xl border shadow-sm" :class="isDark ? 'bg-gray-900 border-gray-800' : 'bg-white border-gray-200'">
+          <h3 class="text-base font-bold mb-1">Aplicaciones de Arranque (Startup)</h3>
+          <p class="text-xs text-gray-400 mb-4">Programas configurados para iniciarse automáticamente con Windows.</p>
+
+          <div class="overflow-x-auto">
+            <table class="w-full text-left text-xs">
+              <thead class="border-b" :class="isDark ? 'border-gray-800 text-gray-400' : 'border-gray-200 text-gray-500'">
+                <tr>
+                  <th class="py-3 px-4">Nombre del Programa</th>
+                  <th class="py-3 px-4">Ubicación / Registro</th>
+                  <th class="py-3 px-4">Comando Ejecutable</th>
+                </tr>
+              </thead>
+              <tbody class="divide-y" :class="isDark ? 'divide-gray-800/50' : 'divide-gray-100'">
+                <tr v-for="(appItem, index) in startupApps" :key="index" class="hover:bg-gray-50/50 transition-colors">
+                  <td class="py-3 px-4 font-bold" :class="isDark ? 'text-cyan-400' : 'text-cyan-600'">{{ appItem.Name }}</td>
+                  <td class="py-3 px-4 text-gray-400 font-mono text-[11px]">{{ appItem.Location }}</td>
+                  <td class="py-3 px-4 text-gray-500 font-mono text-[11px] truncate max-w-xs">{{ appItem.Command }}</td>
+                </tr>
+                <tr v-if="startupApps.length === 0">
+                  <td colspan="3" class="py-6 text-center text-gray-400">Cargando aplicaciones de inicio...</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+
     </main>
   </div>
 </template>
@@ -201,6 +286,10 @@ const isDark = ref(true)
 const currentTab = ref('dashboard')
 const cleaning = ref(false)
 const cleanResult = ref(null)
+const flushing = ref(false)
+const exporting = ref(false)
+const startupApps = ref([])
+const hardwareSpecs = ref({ gpu: 'Cargando...', vram: '--', motherboard: 'Cargando...', biosVersion: '--' })
 
 const metrics = ref({
   healthScore: 100,
@@ -228,21 +317,93 @@ const scheduleNext = () => {
   timer = setTimeout(fetchMetrics, 2000)
 }
 
+// Batería directo desde el renderer — no necesita admin
+let batteryApi = null
+async function getBatteryRenderer() {
+  try {
+    if (!batteryApi) batteryApi = await navigator.getBattery()
+    const b = batteryApi
+    return {
+      percent:       Math.round(b.level * 100),
+      isCharging:    b.charging,
+      timeRemaining: b.chargingTime !== Infinity ? Math.round(b.chargingTime / 60) : 0,
+      hasBattery:    true,
+      health:        null  // la salud sigue viniendo del wmic
+    }
+  } catch {
+    return null
+  }
+}
+
 const fetchMetrics = async () => {
   if (running) return
   running = true
   try {
+    // Métricas de sistema (CPU, RAM, disco, procesos)
     if (window.api && window.api.getSystemStatus) {
       const status = await window.api.getSystemStatus()
       metrics.value = status
     }
+
+    // Hardware avanzado: red + salud de batería desde main
     if (window.api && window.api.getAdvancedHardware) {
       const adv = await window.api.getAdvancedHardware()
+
+      // Sobreescribir datos de batería con navigator.getBattery() — más preciso, sin admin
+      const battRenderer = await getBatteryRenderer()
+      if (battRenderer) {
+        adv.battery = {
+          ...adv.battery,              // conservar health que viene del wmic
+          percent:       battRenderer.percent,
+          isCharging:    battRenderer.isCharging,
+          timeRemaining: battRenderer.timeRemaining,
+          hasBattery:    true
+        }
+      }
+
       advancedHardware.value = adv
     }
   } finally {
     running = false
     scheduleNext()
+  }
+}
+
+const handleFlushRam = async () => {
+  flushing.value = true
+  if (window.api && window.api.flushRam) {
+    const res = await window.api.flushRam()
+    alert(res.message)
+  }
+  flushing.value = false
+}
+
+const handleExportReport = async () => {
+  exporting.value = true
+  if (window.api && window.api.exportReport) {
+    const reportPayload = {
+      software: 'SENTIByte - PC Health Monitor',
+      system: metrics.value,
+      hardware: advancedHardware.value,
+      gpuDetails: hardwareSpecs.value,
+      exportedAt: new Date().toLocaleString()
+    }
+    const res = await window.api.exportReport(reportPayload)
+    if (res.success) {
+      alert(`Reporte exportado exitosamente en tu Escritorio:\n${res.path}`)
+    } else {
+      alert(res.message)
+    }
+  }
+  exporting.value = false
+}
+
+const fetchAdvancedTools = async () => {
+  if (window.api && window.api.getStartupApps) {
+    startupApps.value = await window.api.getStartupApps()
+  }
+  if (window.api && window.api.getGpuMotherboard) {
+    hardwareSpecs.value = await window.api.getGpuMotherboard()
   }
 }
 

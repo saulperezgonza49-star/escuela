@@ -6,7 +6,7 @@
       <div class="flex justify-between items-center mb-4">
         <h2 class="font-medium text-sm" :class="isDark ? 'text-gray-400' : 'text-gray-500'">Estado de la Batería</h2>
         <span class="text-xs font-bold px-2.5 py-1 rounded-md" :class="battery.isCharging ? (isDark ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20' : 'bg-amber-50 text-amber-700 border border-amber-200') : (isDark ? 'bg-gray-800 text-gray-300' : 'bg-gray-100 text-gray-700')">
-          {{ battery.isCharging ? 'Cargando' : 'Desconectada / Uso' }}
+          {{ battery.isCharging ? '⚡ Conectada / Cargando' : '🔋 En batería' }}
         </span>
       </div>
 
@@ -25,7 +25,7 @@
       </div>
 
       <div class="text-xs space-y-1" :class="isDark ? 'text-gray-400' : 'text-gray-500'">
-        <p>Salud estimada de celda: <strong :class="isDark ? 'text-white' : 'text-gray-900'">{{ battery.health }}%</strong></p>
+        <p>Salud estimada de celda: <strong :class="isDark ? 'text-white' : 'text-gray-900'">{{ battery.health !== null ? battery.health + '%' : '--' }}</strong></p>
       </div>
     </div>
 

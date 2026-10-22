@@ -21,7 +21,7 @@ function createWindow() {
   })
 
   if (isDev) {
-    win.loadURL('http://localhost:5173')
+    win.loadURL('http://localhost:5174')
   } else {
     win.loadFile(path.join(__dirname, 'dist/index.html'))
   }
@@ -160,29 +160,59 @@ ipcMain.handle('get-system-status', async () => {
   }
 })
 
+// Lee la salud real de batería directo de Windows (más preciso que systeminformation)
+function getBatteryHealthWmic() {
+  return new Promise((resolve) => {
+    exec(
+      'wmic path Win32_Battery get DesignCapacity,FullChargeCapacity /format:csv',
+      (error, stdout) => {
+        if (error || !stdout) return resolve(null)
+        const lines = stdout.trim().split('\n').filter(l => l && !l.startsWith('Node'))
+        if (!lines.length) return resolve(null)
+        const parts = lines[0].trim().split(',')
+        const designed = parseInt(parts[1])
+        const full     = parseInt(parts[2])
+        if (!designed || !full || isNaN(designed) || isNaN(full)) return resolve(null)
+        const pct = Math.round((full / designed) * 100)
+        resolve(Math.min(100, Math.max(0, pct)))
+      }
+    )
+  })
+}
+
 // IPC Handler para obtener detalles de la batería y red
 ipcMain.handle('get-advanced-hardware', async () => {
   try {
-    const battery = await si.battery()
-    const netStats = await si.networkStats()
+    const [battery, netStats, healthWmic] = await Promise.all([
+      si.battery(),
+      si.networkStats(),
+      getBatteryHealthWmic()
+    ])
+
+    const isCharging = battery.isCharging || battery.acConnected || false
 
     return {
       battery: {
-        hasBattery: battery.hasBattery,
-        percent: battery.percent || 100,
-        isCharging: battery.isCharging || false,
+        hasBattery:    battery.hasBattery,
+        percent:       battery.percent || 0,
+        isCharging,
         timeRemaining: battery.timeRemaining || 0,
-        health: battery.maxCapacity && battery.designedCapacity ? Math.round((battery.maxCapacity / battery.designedCapacity) * 100) : 100
+        health: healthWmic !== null ? healthWmic : (() => {
+          const max  = battery.maxCapacity      || 0
+          const orig = battery.designedCapacity || 0
+          if (!max || !orig) return null
+          return Math.min(100, Math.max(0, Math.round((max / orig) * 100)))
+        })()
       },
       network: netStats[0] ? {
-        rx_sec: (netStats[0].rx_sec / 1024 / 1024).toFixed(2), // MB/s de bajada
-        tx_sec: (netStats[0].tx_sec / 1024 / 1024).toFixed(2)  // MB/s de subida
+        rx_sec: (netStats[0].rx_sec / 1024 / 1024).toFixed(2),
+        tx_sec: (netStats[0].tx_sec / 1024 / 1024).toFixed(2)
       } : { rx_sec: '0.00', tx_sec: '0.00' }
     }
   } catch (error) {
     console.error('Error leyendo hardware avanzado:', error)
     return {
-      battery: { hasBattery: false, percent: 100, isCharging: false, health: 100 },
+      battery: { hasBattery: false, percent: 0, isCharging: false, health: null },
       network: { rx_sec: '0.00', tx_sec: '0.00' }
     }
   }
@@ -228,5 +258,66 @@ ipcMain.handle('clean-temp-files', async () => {
     return { success: true, freedMB, deletedFilesCount }
   } catch (error) {
     return { success: false, message: 'Error al acceder a la carpeta de temporales.' }
+  }
+})
+
+// ─── 1. Gestor de Aplicaciones de Inicio (Startup) ─────────────────────────────
+ipcMain.handle('get-startup-apps', async () => {
+  try {
+    const psCommand = 'powershell "Get-CimInstance Win32_StartupCommand | Select-Object Name, Command, Location | ConvertTo-Json"'
+    const { execSync } = require('child_process')
+    const output = execSync(psCommand, { encoding: 'utf8', timeout: 3000 }).trim()
+    if (!output) return []
+    const parsed = JSON.parse(output)
+    return Array.isArray(parsed) ? parsed : [parsed]
+  } catch (error) {
+    return []
+  }
+})
+
+// ─── 2. Detalles Avanzados de GPU y Tarjeta Madre ──────────────────────────────
+ipcMain.handle('get-gpu-motherboard', async () => {
+  try {
+    const graphics = await si.graphics()
+    const baseboard = await si.baseboard()
+    const bios = await si.bios()
+
+    const gpuName = graphics.controllers[0] ? graphics.controllers[0].model : 'Gráficos Integrados / Genéricos'
+    const vram = graphics.controllers[0] && graphics.controllers[0].vram ? graphics.controllers[0].vram + ' MB' : 'Compartida'
+
+    return {
+      gpu: gpuName,
+      vram: vram,
+      motherboard: `${baseboard.manufacturer || 'HP'} ${baseboard.model || 'ProBook'}`,
+      biosVersion: bios.version || 'UEFI'
+    }
+  } catch (error) {
+    return { gpu: 'No detectada', vram: '--', motherboard: 'Placa Base', biosVersion: '--' }
+  }
+})
+
+// ─── 3. Liberador Rápido de RAM ────────────────────────────────────────────────
+ipcMain.handle('flush-ram', async () => {
+  try {
+    const psCommand = 'powershell "Get-Process | Where-Object {$_.WorkingSet -gt 20000000} | ForEach-Object { $_.MinWorkingSet = [IntPtr]} -ErrorAction SilentlyContinue"'
+    const { execSync } = require('child_process')
+    execSync(psCommand, { timeout: 3000 })
+    return { success: true, message: 'Memoria RAM optimizada y liberada con éxito.' }
+  } catch (error) {
+    return { success: false, message: 'No se pudo forzar la liberación completa de RAM.' }
+  }
+})
+
+// ─── 4. Exportador de Reportes de Diagnóstico (FALTABA ESTE) ────────────────────
+ipcMain.handle('export-report', async (event, reportData) => {
+  try {
+    const desktopPath = path.join(os.homedir(), 'Desktop')
+    const fileName = `Reporte_Diagnostico_SENTIByte_${Date.now()}.json`
+    const filePath = path.join(desktopPath, fileName)
+
+    fs.writeFileSync(filePath, JSON.stringify(reportData, null, 2), 'utf8')
+    return { success: true, path: filePath }
+  } catch (error) {
+    return { success: false, message: 'Error al exportar el reporte en el Escritorio.' }
   }
 })
